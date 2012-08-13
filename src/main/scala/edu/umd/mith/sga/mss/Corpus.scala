@@ -19,63 +19,83 @@
  */
 package edu.umd.mith.sga.mss
 
+import scala.io.Source
 import scala.util.parsing.combinator._
 
 object LineParser extends RegexParsers {
   override val skipWhitespace = false
-  def line = (marked | (text ^^ (Right(_)))).*
-  val marked = "[" ~> text <~ "]" ^^ (Left(_))
-  val text = "[^\\[\\]]+".r
-  def parse(s: String) = this.parseAll(line, s.trim)
+  val plain = "[^\\[\\]<>]+".r ^^ (Plain(_))
+  lazy val deleted: Parser[Deleted] = ("[" ~> text <~ "]") ^^ (Deleted(_))
+  lazy val unclear: Parser[Unclear] = ("<" ~> text <~ ">") ^^ (Unclear(_))
+  lazy val text: Parser[Seq[Span]] = rep(plain | deleted | unclear)
+  def apply(s: String) = this.parseAll(text, s.trim) match {
+    case Failure(_, _) => Left(Seq(Plain(s)))
+    case Success(result, _) => Right(result)
+  }
 }
 
-class CorpusReader(lines: Iterator[String]) {
-  def consecutives[A](xs: Seq[Option[A]]): Seq[Seq[A]] =
-    xs.foldLeft(Seq.empty[A] :: Nil) {
-      case (y :: ys, Some(x)) => (y :+ x) :: ys
-      case (ys, _) => Seq.empty[A] :: ys
-    }.reverse.filter(_.nonEmpty)
+class CorpusReader(source: Source) {
+  def this() = this(Source.fromFile("data/pbs-mss-corpus.txt"))
+  val metadata = new Metadata 
+  val LinePattern = "^(.+)/(.+):(.+):(.+):(.*):(.*):(.+):([VPM]):([HT])/$".r
 
-  val Line = """^(.+)/(.+):(.+):(.+):(.+):(.+):(.+):([VPM]):([HT])/$""".r
-  var last: ((String, String), String) = _
-  val content: Map[((String, String), String), Seq[Seq[String]]] = lines.drop(2).map {
-    case Line(content, shelf, page, ln, pub, pn, title, cat, ht) =>
-      last = ((shelf, title), page)
-      Right(((shelf, title), page) -> Some(content))
-    case s if s.trim.isEmpty => Right(last -> None)
-    case s => Left(s)
-  }.flatMap(_.right.toOption).toSeq.groupBy(_._1).mapValues(
-    lines => consecutives(lines.map(_._2))
-  )
+  val categories = Map("V" -> Verse, "P" -> Prose, "M" -> Miscellaneous)
 
-  def createStubTEI(shelf: String, title: String, page: String, id: String) =
-    this.content.get((shelf -> title) -> page).map { zones =>
-      <surface xml:id={id}
-        xmlns="http://www.tei-c.org/ns/1.0"
-        xmlns:sga="http://sga.mith.org/ns/1.0">
-        <graphic url={"../../images/%s/%s.tif".format(id.substring(0, 2), id)}/>
-        { zones.map { zone =>
-          <zone type="main">
-            { zone.map { line =>
-              <line>{
-                (LineParser.parse(line).get match {
-                  case ss if ss.last.isLeft => ss.dropRight(1)
-                  case ss => ss
-                }).map {
-                  case Right(t) => xml.Text(t)
-                  case Left(t) => <del rend="strikethrough">{t}</del>
-                }
-              }</line>
-            }}
-          </zone>
-        }}
-      </surface>
+  val volumes: Seq[Volume] = {
+    val lines: Seq[((Shelfmark, String, String), Line)] =
+      this.source.getLines.filter(_.nonEmpty).map {
+        case LinePattern(content, sm, pn, ln, pubt, pubn, wt, wc, ht) => (
+          (this.metadata.shelfmarks(sm), pn, ln),
+          Line(
+            LineParser(content).fold(identity, identity), (pubt, pubn),
+            this.metadata.workTitles(wt),
+            this.categories(wc),
+            ht == "H"
+          )
+        )
+      }.toSeq
+
+    val shelfmarks = lines.map(_._1._1).distinct
+    val vs = lines.groupBy(_._1._1).mapValues { volLines =>
+      val pages = volLines.map(_._1._2).distinct
+      val ps = volLines.groupBy(_._1._2).mapValues { pageLines => Page(
+        pageLines.map {
+          case ((_, _, ln), line) => ln -> line
+        }
+      )}
+      pages.map(pn => pn -> ps(pn))
     }
+    shelfmarks.map(sm => Volume(sm, vs(sm)))
+  }
+
+  this.source.close()
 }
 
-object CorpusReader extends App {
-  val r = new CorpusReader(io.Source.fromFile(args(0)).getLines)
-  val p = new xml.PrettyPrinter(80, 2)
-  println(p.format(r.createStubTEI("BODe4", "", "11r", "ox-ms_shelley_e4-11r").get))
+object MalletConverter extends App {
+  def flatten(s: Span, m: Int): Seq[(String, Int)] = s match {
+    case Plain(text) => Seq(text -> m)
+    case Deleted(spans) => spans.flatMap(flatten(_, 1 | m))
+    case Unclear(spans) => spans.flatMap(flatten(_, 2 | m))
+  }
+
+  def spansString(ss: Seq[Span]) = ss.flatMap(this.flatten(_, 0).map {
+    case (text, _) => text
+    //case (text, 1) => text + "$d"
+    //case (text, 2) => text + "$u"
+    //case (text, 3) => text + "$ud"
+  }).mkString(" ")
+
+  val corpus = new CorpusReader
+  val writer = new java.io.PrintWriter(args(0))
+
+  corpus.volumes.foreach {
+    case Volume(shelfmark, pages) => pages.zipWithIndex.foreach {
+      case ((pn, Page(lines)), i) => writer.println("%s-%d _ %s".format(
+        pn, i, this.spansString(lines.flatMap(_._2.content))
+      ))
+    }
+  }
+
+  writer.close()
 }
 

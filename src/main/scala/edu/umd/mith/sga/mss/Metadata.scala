@@ -21,17 +21,64 @@ package edu.umd.mith.sga.mss
 
 import scala.io.Source
 
-class Metadata {
-  private[this] val WorksLine = "^(\\S+) (.*)$".r
+case class Volume(shelfmark: Shelfmark, pages: Seq[(String, Page)]) {
+  lazy val page = this.pages.toMap
+}
 
-  val works = {
-    val r = this.getClass.getResourceAsStream("/edu/umd/mith/sga/mss/works.txt")
-    val s = Source.fromInputStream(r)
+case class Page(lines: Seq[(String, Line)]) {
+  lazy val line = this.lines.toMap
+}
+
+case class Line(
+  content: Seq[Span],
+  publication: (String, String),
+  workTitle: WorkTitle,
+  category: Category,
+  holograph: Boolean
+)  
+
+trait Abbreviated {
+  def name: String
+  def abbrev: String
+}
+
+case class Shelfmark(name: String, abbrev: String) extends Abbreviated
+case class WorkTitle(name: String, abbrev: String) extends Abbreviated
+
+sealed trait Category
+case object Verse extends Category
+case object Prose extends Category
+case object Miscellaneous extends Category
+
+sealed trait Span
+case class Plain(text: String) extends Span
+trait Container extends Span { def spans: Seq[Span] }
+case class Unclear(spans: Seq[Span]) extends Container
+case class Deleted(spans: Seq[Span]) extends Container
+
+class Metadata {
+  private[this] val LinePattern = "^(\\S+) (.*)$".r
+  private[this] val workTitlesPath = "/edu/umd/mith/sga/mss/works.txt"
+  private[this] val shelfmarksPath = "/edu/umd/mith/sga/mss/shelfmarks.txt"
+
+  private def readAbbrevs(path: String): Map[String, String] = {
+    val s = Source.fromInputStream(this.getClass.getResourceAsStream(path))
     val m = s.getLines.filterNot(_.startsWith("#")).collect {
-      case WorksLine(abbrev, name) => abbrev -> name
+      case LinePattern(abbrev, name) => abbrev -> name
     }.toMap
-    r.close()
+    s.close()
     m
+  }
+
+  val workTitles = this.readAbbrevs(this.workTitlesPath).map {
+    case (abbrev, name) => abbrev -> WorkTitle(name, abbrev)
+  } + ("S!" -> WorkTitle("S!", "Shorted Poems (other)"))
+
+  val shelfmarks = this.readAbbrevs(this.shelfmarksPath).map {
+    case (abbrev, name) if abbrev.startsWith("*") => abbrev.tail -> name
+    case p => p
+  }.map {
+    case (abbrev, name) => abbrev -> Shelfmark(name, abbrev)
   }
 }
 
