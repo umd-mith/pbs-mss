@@ -1,5 +1,5 @@
-The Percy Bysshe Shelley Manuscript Corpus (PBS-MSS)
-====================================================
+The Percy Bysshe Shelley Manuscript Corpus
+==========================================
 
 This corpus was prepared by Tatsuo Tokoo with support from a Grant-in-Aid for
 Scientific Research (KAKENHI) from the Japan Society for the Promotion of
