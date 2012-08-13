@@ -1,0 +1,80 @@
+AD Adonais
+CE The Cenci
+CH Charles the First
+CL The Cloud (1820)
+DJ Stanzas written in Dejection, near Naples (1818)
+EP Epipsychidion
+ESD Esdaile Poems
+HE Hellas
+IB Hymn to Intellectual Beauty (1816)
+JG With a Guitar. To Jane (1822)
+JI To Jane: The Invitation (1822)
+JK To Jane: "The keen stars..." (1822)
+JM Julian and Maddalo
+JR To Jane: The Recollection (1822)
+LB Ode to Liberty (1820)
+LC Laon and Cythna (The Revolt of Islam)
+MA The Mask of Anarchy
+MB Mont Blanc (1816)
+MG Letter to Maria Gisborne
+NP Ode to Naples (1820)
+OT Oedipus Tyrannus
+OZ Ozymandias (1817)
+PA Prince Athanase
+PB Peter Bell the Third
+PU Prometheus Unbound
+RH Rosalind and Helen
+SK To a Skylark (1820)
+SP The Sensitive Plant (1820)
+TL The Triumph of Life
+UD Fragments of an Unfinished Drama
+VS A Vision of the Sea (1820)
+WA The Witch of Atlas
+WW Ode to the West Wind (1819)
+S5 Shorter Poems written in 1810-1815
+S6 Shorter Poems written in 1816
+S7 Shorter Poems written in 1817
+S8 Shorter Poems written in 1818
+S9 Shorter Poems written in 1819
+S0 Shorter Poems written in 1820
+S1 Shorter Poems written in 1821
+S2 Shorter Poems written in 1822
+# S5-S2 follow the classification adopted in vol. XXIII of the Bodleian Shelley Manuscripts.
+# Translations
+TC Translation (Calderon)
+TD Translation (Dante)
+TG Translation (Goethe)
+TH Translation (Homer)
+TO Translation (others)
+TP Translation (Plato)
+# Prose
+DD On the Devil, and Devils
+DP A Defence of Poetry
+EX Essay on Christianity
+FS On a Future State
+LF On Life
+LV On Love
+MN A Discourse on the Manners of the Ancient Greeks
+MR Speculations on Morals
+MT Speculations on Metaphysics
+PD On the Punishment of Death
+PV A Philosophical View of Reform
+SY On the Symposium
+PO Prose (others)
+PT Prose (translation)
+# Others
+DL Draft of Letters (category = P)
+FR Fragment (category = V, P, M)
+J Journal (category = P)
+MSC Miscellaneous Entries (category = M)
+N&E Notes and Excerpts (category = M)
+# Items in Italian
+LB_It Ode alla Liberta
+LC_It Laon and Cythna
+# Italian translation
+PO_It Sgricci review, Una Favola
+PU_It Prometheus Unbound
+# Italian translation
+S1_It Buona Notte
+VF_It Verse fragment in Italian
+DL_It Draft of Letters in Italian (category = P)

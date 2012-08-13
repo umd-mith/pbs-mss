@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>edu.umd.mith</groupId>
+  <artifactId>pbs-mss</artifactId>
+  <name>The Percy Bysshe Shelley Manuscript Corpus</name>
+  <description>
+    This corpus was prepared by Tatsuo Tokoo with support from a Grant-in-Aid
+    for Scientific Research (KAKENHI) from the Japan Society for the
+    Promotion of Science (JSPS) in 2001-2002.
+    It is presented here with minor revisions and tools for manipulation by
+    the Maryland Institute for Technology in the Humanities.
+  </description>
+  <version>0.0.1-SNAPSHOT</version>
+
+  <parent>
+    <groupId>edu.umd.mith</groupId>
+    <artifactId>proto</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+  </parent>
+
+  <!--<dependencies>
+    <dependency>
+      <groupId>colt</groupId>
+      <artifactId>colt</artifactId>
+      <version>1.2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>cc.mallet</groupId>
+      <artifactId>mallet</artifactId>
+      <version>2.0.7</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.mahout</groupId>
+      <artifactId>mahout-math</artifactId>
+      <version>0.7</version>
+    </dependency>
+  </dependencies>-->
+</project>
+
