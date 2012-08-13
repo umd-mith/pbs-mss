@@ -25,8 +25,8 @@ Working with the Corpus
 -----------------------
 
 The `src` directory contains utilities for working with this format in Java
-(or other languages that target the Java Virtual Machine; the library itself
-is written in Scala), along with some simple command line tools.
+(or any other language that targets the Java Virtual Machine; the library
+itself is written in Scala), along with some simple command line tools.
 
 The library uses the [Maven build system](http://maven.apache.org/). If you
 have Maven installed on your machine, you can use the following command to
