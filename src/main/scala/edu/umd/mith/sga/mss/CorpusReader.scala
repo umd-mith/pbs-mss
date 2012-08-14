@@ -90,8 +90,8 @@ object MalletConverter extends App {
 
   corpus.volumes.foreach {
     case Volume(shelfmark, pages) => pages.zipWithIndex.foreach {
-      case ((pn, Page(lines)), i) => writer.println("%s-%d _ %s".format(
-        shelfmark, i, this.spansString(lines.flatMap(_._2.content))
+      case ((pn, Page(lines)), i) => writer.println("%s-%04d _ %s".format(
+        shelfmark.abbrev, i + 1, this.spansString(lines.flatMap(_._2.content))
       ))
     }
   }
