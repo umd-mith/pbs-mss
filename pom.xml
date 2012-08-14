@@ -21,5 +21,13 @@
     <artifactId>proto</artifactId>
     <version>0.0.1-SNAPSHOT</version>
   </parent>
+
+  <dependencies>
+    <dependency>
+      <groupId>edu.umd.mith</groupId>
+      <artifactId>util</artifactId>
+       <version>0.0.1-SNAPSHOT</version>
+    </dependency>
+  </dependencies>
 </project>
 
