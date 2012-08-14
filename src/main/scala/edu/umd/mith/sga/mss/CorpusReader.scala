@@ -19,6 +19,7 @@
  */
 package edu.umd.mith.sga.mss
 
+import edu.umd.mith.util.convenience._
 import scala.io.Source
 import scala.util.parsing.combinator._
 
@@ -41,31 +42,23 @@ class CorpusReader(source: Source) {
 
   val categories = Map("V" -> Verse, "P" -> Prose, "M" -> Miscellaneous)
 
-  val volumes: Seq[Volume] = {
-    val lines: Seq[((Shelfmark, String, String), Line)] =
-      this.source.getLines.filter(_.nonEmpty).map {
-        case LinePattern(content, sm, pn, ln, pubt, pubn, wt, wc, ht) => (
-          (this.metadata.shelfmarks(sm), pn, ln),
-          Line(
-            LineParser(content).fold(identity, identity), (pubt, pubn),
-            this.metadata.workTitles(wt),
-            this.categories(wc),
-            ht == "H"
-          )
-        )
-      }.toSeq
-
-    val shelfmarks = lines.map(_._1._1).distinct
-    val vs = lines.groupBy(_._1._1).mapValues { volLines =>
-      val pages = volLines.map(_._1._2).distinct
-      val ps = volLines.groupBy(_._1._2).mapValues { pageLines => Page(
-        pageLines.map {
-          case ((_, _, ln), line) => ln -> line
-        }
-      )}
-      pages.map(pn => pn -> ps(pn))
-    }
-    shelfmarks.map(sm => Volume(sm, vs(sm)))
+  val volumes: Seq[Volume] = this.source.getLines.filter(_.nonEmpty).map {
+    case LinePattern(content, sm, pn, ln, pubt, pubn, wt, wc, ht) => 
+      (this.metadata.shelfmarks(sm), pn, ln) -> Line(
+        LineParser(content).fold(identity, identity),
+        (pubt, pubn),
+        this.metadata.workTitles(wt),
+        this.categories(wc),
+        ht == "H"
+      )
+  }.groupPartsBy {
+    case ((sm, pn, ln), line) => sm -> ((pn, ln), line)
+  }.map {
+    case (sm, volLines) => Volume(sm, volLines.groupPartsBy {
+      case ((pn, ln), line) => pn -> (ln, line)
+    }.map {
+      case (pn, pageLines) => pn -> Page(pageLines)
+    })
   }
 
   this.source.close()
