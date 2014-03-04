@@ -1,33 +1,15 @@
-/*
- * #%L
- * The Percy Bysshe Shelley Manuscript Corpus
- * %%
- * Copyright (C) 2011 - 2012 Maryland Institute for Technology in the Humanities
- * %%
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *      http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * #L%
- */
 package edu.umd.mith.sga.mss
 
-import edu.umd.mith.util.convenience._
 import scala.io.Source
 import scala.util.parsing.combinator._
+import scalaz._, Scalaz._
+import scalaz.stream._
 
 object LineParser extends RegexParsers {
   override val skipWhitespace = false
   val plain = "[^\\[\\]<>]+".r ^^ (Plain(_))
-  lazy val deleted: Parser[Deleted] = ("[" ~> text <~ "]") ^^ (Deleted(_))
-  lazy val unclear: Parser[Unclear] = ("<" ~> text <~ ">") ^^ (Unclear(_))
+  lazy val deleted: Parser[Deleted] = ("[" ~> text <~ "]") ^^ (t => Deleted(t.toList))
+  lazy val unclear: Parser[Unclear] = ("<" ~> text <~ ">") ^^ (t => Unclear(t.toList))
   lazy val text: Parser[Seq[Span]] = rep(plain | deleted | unclear)
   def apply(s: String) = this.parseAll(text, s.trim) match {
     case Failure(_, _) => Left(Seq(Plain(s)))
@@ -36,19 +18,60 @@ object LineParser extends RegexParsers {
 }
 
 class CorpusReader(source: Source) {
+  type LineParts = (String, String, String, LineNumber, String, String, String, String, String)
+  val LinePattern = "^(.+)/(.+):(.+):(.*):(.*):(.*):(.+):([VPM]):([HT])/$".r
+
+  def parseLineParts(line: String, number: Int): Validation[Throwable, LineParts] = line match {
+    case LinePattern(
+      content,
+      shelfmark,
+      foliation,
+      lineNumber,
+      publicationTitle,
+      publicationNumber,
+      workTitle,
+      workCategory,
+      holographStatus
+    ) => 
+      (
+        content,
+        shelfmark,
+        foliation,
+        LineNumber.parse(lineNumber),
+        publicationTitle,
+        publicationNumber,
+        workTitle,
+        workCategory,
+        holographStatus
+      ).success
+    case _ => CorpusFormatError(f"Invalid line: $line%s", number).failure
+  }
+
+  def lines = io.linesR("data/pbs-mss-corpus.txt")
+    .zip(Process.iterate(1)(_ + 1))
+    .filter { case (line, _) => line.trim.nonEmpty }
+    .map((parseLineParts _).tupled)
+
   def this() = this(Source.fromFile("data/pbs-mss-corpus.txt"))
-  val metadata = new Metadata 
-  val LinePattern = "^(.+)/(.+):(.+):(.+):(.*):(.*):(.+):([VPM]):([HT])/$".r
 
   val categories = Map("V" -> Verse, "P" -> Prose, "M" -> Miscellaneous)
 
-  val volumes: Seq[Volume] = this.source.getLines.filter(_.nonEmpty).map {
-    case LinePattern(content, sm, pn, ln, pubt, pubn, wt, wc, ht) => 
-      (this.metadata.shelfmarks(sm), pn, ln) -> Line(
+  /*val volumes: Seq[Volume] = source.getLines.filter(_.nonEmpty).map {
+    case LinePattern(
+      content,
+      shelfmark,
+      foliation,
+      lineNumber,
+      publicationTitle,
+      publicationNumber,
+      workTitle,
+      workCategory,
+      holographStatus) => 
+      (Metadata.shelfmarks(sm), pn, ln) -> Line(
         LineParser(content).fold(identity, identity),
         (pubt, pubn),
-        this.metadata.workTitles(wt),
-        this.categories(wc),
+        Metadata.workTitles(wt),
+        categories(wc),
         ht == "H"
       )
   }.groupPartsBy {
@@ -61,17 +84,17 @@ class CorpusReader(source: Source) {
     })
   }
 
-  this.source.close()
+  source.close()*/
 }
 
-object MalletConverter extends App {
+/*object MalletConverter extends App {
   def flatten(s: Span, m: Int): Seq[(String, Int)] = s match {
     case Plain(text) => Seq(text -> m)
     case Deleted(spans) => spans.flatMap(flatten(_, 1 | m))
     case Unclear(spans) => spans.flatMap(flatten(_, 2 | m))
   }
 
-  def spansString(ss: Seq[Span]) = ss.flatMap(this.flatten(_, 0).map {
+  def spansString(ss: Seq[Span]) = ss.flatMap(flatten(_, 0).map {
     case (text, _) => text
     //case (text, 1) => text + "$d"
     //case (text, 2) => text + "$u"
@@ -84,11 +107,11 @@ object MalletConverter extends App {
   corpus.volumes.foreach {
     case Volume(shelfmark, pages) => pages.zipWithIndex.foreach {
       case ((pn, Page(lines)), i) => writer.println("%s-%04d _ %s".format(
-        shelfmark.abbrev, i + 1, this.spansString(lines.flatMap(_._2.content))
+        shelfmark.abbrev, i + 1, spansString(lines.flatMap(_._2.content))
       ))
     }
   }
 
   writer.close()
-}
+}*/
 

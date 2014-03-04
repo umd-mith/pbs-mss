@@ -31,6 +31,7 @@ UD Fragments of an Unfinished Drama
 VS A Vision of the Sea (1820)
 WA The Witch of Atlas
 WW Ode to the West Wind (1819)
+# S5-S2 follow the classification adopted in vol. XXIII of the Bodleian Shelley Manuscripts.
 S5 Shorter Poems written in 1810-1815
 S6 Shorter Poems written in 1816
 S7 Shorter Poems written in 1817
@@ -39,7 +40,8 @@ S9 Shorter Poems written in 1819
 S0 Shorter Poems written in 1820
 S1 Shorter Poems written in 1821
 S2 Shorter Poems written in 1822
-# S5-S2 follow the classification adopted in vol. XXIII of the Bodleian Shelley Manuscripts.
+# S! was missing from original manifest, and was added by Travis Brown.
+S! Shorter Poems (other)
 # Translations
 TC Translation (Calderon)
 TD Translation (Dante)

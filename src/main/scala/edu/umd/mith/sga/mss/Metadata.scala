@@ -1,36 +1,52 @@
-/*
- * #%L
- * The Percy Bysshe Shelley Manuscript Corpus
- * %%
- * Copyright (C) 2011 - 2012 Maryland Institute for Technology in the Humanities
- * %%
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- * 
- *      http://www.apache.org/licenses/LICENSE-2.0
- * 
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- * #L%
- */
 package edu.umd.mith.sga.mss
 
 import scala.io.Source
+import scalaz.{ Order, Validation }, scalaz.syntax.validation._
 
-case class Volume(shelfmark: Shelfmark, pages: Seq[(String, Page)]) {
-  lazy val page = this.pages.toMap
+case class CorpusFormatError(message: String, lineNumber: Int) extends Exception(
+  f"At line $lineNumber%d: $message%s"
+)
+
+case class Volume(shelfmark: Shelfmark, pages: List[(String, Page)]) {
+  lazy val page = pages.toMap
 }
 
-case class Page(lines: Seq[(String, Line)]) {
-  lazy val line = this.lines.toMap
+case class Page(lines: List[(String, Line)]) {
+  lazy val line = lines.toMap
 }
+
+sealed trait LineNumber
+
+case class ErrorLineNumber(content: String) extends LineNumber
+case class ValidLineNumber(number: Int, pre: Option[Char], post: Option[String], stars: Int) extends LineNumber
+
+object LineNumber {
+  implicit val ordering: Order[LineNumber] = Order[String].contramap {
+    case ErrorLineNumber(content) => content
+    case ValidLineNumber(number, pre, post, stars) =>
+      val starField = "*" * stars
+      val preField = pre.getOrElse(' ')
+      val postField = post.getOrElse("")
+      f"$starField%-3s$preField%s$number%06d$postField%s"
+  }
+
+  private[this] val LineNumberPattern = """^(\*{0,3})([RVMABF]?)(\d{1,4})([a-z]?[i]?)$""".r
+
+  def parse(s: String): LineNumber = s match {
+    case LineNumberPattern(starPart, prePart, numberPart, postPart) => ValidLineNumber(
+      numberPart.toInt,
+      prePart.headOption,
+      if (postPart.isEmpty) None else Some(postPart),
+      starPart.length
+    )
+    case _ => ErrorLineNumber(s)
+  }
+}
+
+
 
 case class Line(
-  content: Seq[Span],
+  content: List[Span],
   publication: (String, String),
   workTitle: WorkTitle,
   category: Category,
@@ -52,17 +68,17 @@ case object Miscellaneous extends Category
 
 sealed trait Span
 case class Plain(text: String) extends Span
-trait Container extends Span { def spans: Seq[Span] }
-case class Unclear(spans: Seq[Span]) extends Container
-case class Deleted(spans: Seq[Span]) extends Container
+trait Container extends Span { def spans: List[Span] }
+case class Unclear(spans: List[Span]) extends Container
+case class Deleted(spans: List[Span]) extends Container
 
-class Metadata {
+object Metadata {
   private[this] val LinePattern = "^(\\S+) (.*)$".r
   private[this] val workTitlesPath = "/edu/umd/mith/sga/mss/works.txt"
   private[this] val shelfmarksPath = "/edu/umd/mith/sga/mss/shelfmarks.txt"
 
   private def readAbbrevs(path: String): Map[String, String] = {
-    val s = Source.fromInputStream(this.getClass.getResourceAsStream(path))
+    val s = Source.fromInputStream(getClass.getResourceAsStream(path))
     val m = s.getLines.filterNot(_.startsWith("#")).collect {
       case LinePattern(abbrev, name) => abbrev -> name
     }.toMap
@@ -70,11 +86,11 @@ class Metadata {
     m
   }
 
-  val workTitles = this.readAbbrevs(this.workTitlesPath).map {
+  val workTitles: Map[String, WorkTitle] = readAbbrevs(workTitlesPath).map {
     case (abbrev, name) => abbrev -> WorkTitle(name, abbrev)
-  } + ("S!" -> WorkTitle("S!", "Shorted Poems (other)"))
+  }
 
-  val shelfmarks = this.readAbbrevs(this.shelfmarksPath).map {
+  val shelfmarks: Map[String, Shelfmark] = readAbbrevs(shelfmarksPath).map {
     case (abbrev, name) if abbrev.startsWith("*") => abbrev.tail -> name
     case p => p
   }.map {
