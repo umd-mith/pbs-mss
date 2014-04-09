@@ -19,6 +19,7 @@ class OxfordImporter(manifestDir: File, shelfmarkAbbrev: String) extends TeiTemp
     manifestSource.getLines.map(_.trim).filter(_.nonEmpty).flatMap {
       case LinePattern(id, shelfmark, folio @ PageNumberPattern(number, modifier)) =>
         some((id, shelfmark, folio, toPageNumber(number, modifier)))
+      case LinePattern(_, _, _) => None
       case HeaderPattern(_, _) | TargetPattern(_, _) => None
       case line => throw new RuntimeException(f"Invalid line: $line%s.")
     }.toList
