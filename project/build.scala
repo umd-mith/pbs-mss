@@ -23,6 +23,7 @@ object ShelleyMSS extends Build {
       "-language:higherKinds"
     ),
     libraryDependencies ++= Seq(
+      "org.apache.sanselan" % "sanselan" % "0.97-incubator",
       "org.parboiled" %% "parboiled" % "2.0-M2",
       "org.scalaz" %% "scalaz-core" % "7.0.6",
       "org.scalaz.stream" %% "scalaz-stream" % "snapshot-0.4"

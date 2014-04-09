@@ -1,19 +1,59 @@
 package edu.umd.mith.sga.mss
 
 import scala.io.Source
-import scalaz.{ Order, Validation }, scalaz.syntax.validation._
+import scalaz._, Scalaz._
 
 case class CorpusFormatError(message: String, lineNumber: Int) extends Exception(
   f"At line $lineNumber%d: $message%s"
 )
 
-case class Volume(shelfmark: Shelfmark, pages: List[(String, Page)]) {
+case class CorpusFormatErrors(errors: NonEmptyList[Throwable]) extends Exception(
+  errors.toList.mkString("\n")
+)
+
+case class Volume(pages: Vector[(PageNumber, Page)]) {
   lazy val page = pages.toMap
 }
 
-case class Page(lines: List[(String, Line)]) {
+object Volume {
+  implicit val monoid: Monoid[Volume] = new Monoid[Volume] {
+    val zero = Volume(Vector.empty)
+    def append(f1: Volume, f2: => Volume) = f2.pages.foldLeft(f1) {
+      case (acc, (pageNumber, page)) => acc.pages.indexWhere(_._1 == pageNumber) match {
+        case -1 => Volume(acc.pages :+ (pageNumber, page))
+        case idx => Volume(acc.pages.updated(idx, (pageNumber, acc.pages(idx)._2 |+| page)))
+      }
+    }
+  }
+}
+
+case class Page(lines: Vector[(LineNumber, Line)]) {
   lazy val line = lines.toMap
 }
+  
+object Page {
+  implicit val monoid: Monoid[Page] = new Monoid[Page] {
+    val zero = Page(Vector.empty)
+    def append(f1: Page, f2: => Page) = Page(f1.lines ++ f2.lines) 
+  }
+}
+
+sealed trait PageNumber {
+  def number: String
+}
+
+object PageNumber {
+  private[this] val PageNumberPattern = """(\d+[ab]?)([rv])""".r
+
+  def apply(s: String) = s match {
+    case PageNumberPattern(number, "r") => some(Recto(number))
+    case PageNumberPattern(number, "v") => some(Verso(number))
+    case _ => none
+  }
+}
+
+case class Recto(number: String) extends PageNumber
+case class Verso(number: String) extends PageNumber
 
 sealed trait LineNumber
 
@@ -32,7 +72,7 @@ object LineNumber {
 
   private[this] val LineNumberPattern = """^(\*{0,3})([RVMABF]?)(\d{1,4})([a-z]?[i]?)$""".r
 
-  def parse(s: String): LineNumber = s match {
+  def apply(s: String): LineNumber = s match {
     case LineNumberPattern(starPart, prePart, numberPart, postPart) => ValidLineNumber(
       numberPart.toInt,
       prePart.headOption,
@@ -43,15 +83,15 @@ object LineNumber {
   }
 }
 
-
-
 case class Line(
-  content: List[Span],
+  content: Either[Span, List[Span]],
   publication: (String, String),
-  workTitle: WorkTitle,
+  title: WorkTitle,
   category: Category,
   holograph: Boolean
-)  
+) {
+  def spans = content.fold(List(_), identity)
+}
 
 trait Abbreviated {
   def name: String
@@ -65,6 +105,12 @@ sealed trait Category
 case object Verse extends Category
 case object Prose extends Category
 case object Miscellaneous extends Category
+
+object Category {
+  private[this] val categories = Map("V" -> Verse, "P" -> Prose, "M" -> Miscellaneous)
+
+  def apply(s: String): Option[Category] = categories.get(s)
+}
 
 sealed trait Span
 case class Plain(text: String) extends Span

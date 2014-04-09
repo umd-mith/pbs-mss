@@ -3,6 +3,7 @@ package edu.umd.mith.sga.mss
 import scala.io.Source
 import scala.util.parsing.combinator._
 import scalaz._, Scalaz._
+import scalaz.concurrent.{ Future, Task }
 import scalaz.stream._
 
 object LineParser extends RegexParsers {
@@ -11,107 +12,69 @@ object LineParser extends RegexParsers {
   lazy val deleted: Parser[Deleted] = ("[" ~> text <~ "]") ^^ (t => Deleted(t.toList))
   lazy val unclear: Parser[Unclear] = ("<" ~> text <~ ">") ^^ (t => Unclear(t.toList))
   lazy val text: Parser[Seq[Span]] = rep(plain | deleted | unclear)
-  def apply(s: String) = this.parseAll(text, s.trim) match {
-    case Failure(_, _) => Left(Seq(Plain(s)))
-    case Success(result, _) => Right(result)
+  def apply(s: String): Either[Span, List[Span]] = this.parseAll(text, s.trim) match {
+    case Failure(_, _) => Left(Plain(s))
+    case Success(result, _) => Right(result.toList)
   }
 }
 
-class CorpusReader(source: Source) {
-  type LineParts = (String, String, String, LineNumber, String, String, String, String, String)
+object CorpusReader {
   val LinePattern = "^(.+)/(.+):(.+):(.*):(.*):(.*):(.+):([VPM]):([HT])/$".r
 
-  def parseLineParts(line: String, number: Int): Validation[Throwable, LineParts] = line match {
-    case LinePattern(
-      content,
-      shelfmark,
-      foliation,
-      lineNumber,
-      publicationTitle,
-      publicationNumber,
-      workTitle,
-      workCategory,
-      holographStatus
-    ) => 
-      (
-        content,
-        shelfmark,
-        foliation,
-        LineNumber.parse(lineNumber),
-        publicationTitle,
-        publicationNumber,
-        workTitle,
-        workCategory,
-        holographStatus
-      ).success
-    case _ => CorpusFormatError(f"Invalid line: $line%s", number).failure
+  type LineInfo = (Shelfmark, PageNumber, LineNumber, Line)
+
+  def parseLineParts(line: String, number: Int): Task[(String, Task[LineInfo])] = line match {
+    case LinePattern(content, sm, fo, ln, pt, pn, wt, wc, hs) =>
+      val lineInfo = Future {
+        val shelfmark = Metadata.shelfmarks.get(sm).toSuccess(
+          CorpusFormatError(f"Invalid shelfmark: $sm%s", number)
+        )
+
+        val title = Metadata.workTitles.get(wt).toSuccess(
+          CorpusFormatError(f"Invalid work title: $wt%s", number)
+        )
+
+        val pageNumber = PageNumber(fo).toSuccess(
+          CorpusFormatError(f"Invalid page number: $fo%s", number)
+        )
+
+        // We know we're safe since the regular expression has matched.
+        val category = Category(wc).get
+        val holograph = hs == "H"
+
+        val result = (
+          shelfmark.toValidationNel |@|
+          title.toValidationNel |@|
+          pageNumber.toValidationNel
+        )((s, t, p) =>
+          (s, p, LineNumber(ln), Line(LineParser(content), (pt, pn), t, category, holograph))
+        )
+
+        result.disjunction.leftMap(CorpusFormatErrors(_))
+      }
+
+      Task.now(sm -> new Task(lineInfo))
+    case _ => Task.fail(CorpusFormatError(f"Invalid line: $line%s", number))
   }
 
   def lines = io.linesR("data/pbs-mss-corpus.txt")
     .zip(Process.iterate(1)(_ + 1))
     .filter { case (line, _) => line.trim.nonEmpty }
-    .map((parseLineParts _).tupled)
-
-  def this() = this(Source.fromFile("data/pbs-mss-corpus.txt"))
-
-  val categories = Map("V" -> Verse, "P" -> Prose, "M" -> Miscellaneous)
-
-  /*val volumes: Seq[Volume] = source.getLines.filter(_.nonEmpty).map {
-    case LinePattern(
-      content,
-      shelfmark,
-      foliation,
-      lineNumber,
-      publicationTitle,
-      publicationNumber,
-      workTitle,
-      workCategory,
-      holographStatus) => 
-      (Metadata.shelfmarks(sm), pn, ln) -> Line(
-        LineParser(content).fold(identity, identity),
-        (pubt, pubn),
-        Metadata.workTitles(wt),
-        categories(wc),
-        ht == "H"
-      )
-  }.groupPartsBy {
-    case ((sm, pn, ln), line) => sm -> ((pn, ln), line)
-  }.map {
-    case (sm, volLines) => Volume(sm, volLines.groupPartsBy {
-      case ((pn, ln), line) => pn -> (ln, line)
-    }.map {
-      case (pn, pageLines) => pn -> Page(pageLines)
-    })
-  }
-
-  source.close()*/
-}
-
-/*object MalletConverter extends App {
-  def flatten(s: Span, m: Int): Seq[(String, Int)] = s match {
-    case Plain(text) => Seq(text -> m)
-    case Deleted(spans) => spans.flatMap(flatten(_, 1 | m))
-    case Unclear(spans) => spans.flatMap(flatten(_, 2 | m))
-  }
-
-  def spansString(ss: Seq[Span]) = ss.flatMap(flatten(_, 0).map {
-    case (text, _) => text
-    //case (text, 1) => text + "$d"
-    //case (text, 2) => text + "$u"
-    //case (text, 3) => text + "$ud"
-  }).mkString(" ")
-
-  val corpus = new CorpusReader
-  val writer = new java.io.PrintWriter(args(0))
-
-  corpus.volumes.foreach {
-    case Volume(shelfmark, pages) => pages.zipWithIndex.foreach {
-      case ((pn, Page(lines)), i) => writer.println("%s-%04d _ %s".format(
-        shelfmark.abbrev, i + 1, spansString(lines.flatMap(_._2.content))
-      ))
+    .evalMap {
+      case (line, number) => parseLineParts(line, number)
     }
-  }
 
-  writer.close()
-}*/
+  def intoPages: Process1[LineInfo, Map[Shelfmark, Volume]] =
+    process1.foldMap {
+      case (shelfmark, pageNumber, lineNumber, line) => Map(
+        shelfmark -> Volume(Vector(pageNumber -> Page(Vector(lineNumber -> line))))
+      )
+    }
+
+  def byShelfmark(abbrev: String): Task[Option[Volume]] =
+    lines.filter(_._1 == abbrev)
+      .evalMap(_._2)
+      .pipe(intoPages)
+      .runLast.map(_.flatMap(_.headOption).map(_._2))
+}
 
