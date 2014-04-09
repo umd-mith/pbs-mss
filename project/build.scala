@@ -15,7 +15,7 @@ object ShelleyMSS extends Build {
       Resolver.sonatypeRepo("snapshots"),
       "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases"
     ),
-    scalaVersion := "2.10.3",
+    scalaVersion := "2.10.4",
     scalacOptions := Seq(
       "-feature",
       "-deprecation",
@@ -24,8 +24,8 @@ object ShelleyMSS extends Build {
     ),
     libraryDependencies ++= Seq(
       "org.parboiled" %% "parboiled" % "2.0-M2",
-      "org.scalaz" %% "scalaz-core" % "7.0.5",
-      "org.scalaz.stream" %% "scalaz-stream" % "0.3.1"
+      "org.scalaz" %% "scalaz-core" % "7.0.6",
+      "org.scalaz.stream" %% "scalaz-stream" % "snapshot-0.4"
     )
   )
 }
