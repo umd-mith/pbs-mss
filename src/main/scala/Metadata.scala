@@ -105,7 +105,7 @@ object LineNumber {
 /** The basic unit of content in the data file.
   */
 case class Line(
-  content: Either[Span, List[Span]],
+  content: Span \/ List[Span],
   publication: (String, String),
   title: WorkTitle,
   category: Category,

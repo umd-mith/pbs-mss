@@ -80,7 +80,7 @@ class OxfordImporter(manifestFile: File, dir: Option[File], shelfmarkAbbrev: Str
   case class PageInfo(
     oxfordId: String,
     shelfmarkLabel: String,
-    pageNumberInfo: Option[PageNumberInfo]
+    pageNumberInfo: String \/ PageNumberInfo
   )
 
   case class PageNumberInfo(
@@ -99,8 +99,9 @@ class OxfordImporter(manifestFile: File, dir: Option[File], shelfmarkAbbrev: Str
           throw new RuntimeException(f"Invalid page number: $pageNumberLabel%s.")
         )
 
-        PageInfo(id, shelfmark, PageNumberInfo(pageNumberLabel, pageNumbers).some).some
-      case LinePattern(id, shelfmark, _) => PageInfo(id, shelfmark, None).some
+        PageInfo(id, shelfmark, PageNumberInfo(pageNumberLabel, pageNumbers).right).some
+      case LinePattern(id, shelfmark, pageNumber) =>
+        PageInfo(id, shelfmark, pageNumber.left).some
       case HeaderPattern(_, _) | TargetPattern(_, _) => None
       case line => throw new RuntimeException(f"Invalid line: $line%s.")
     }.toList
@@ -128,7 +129,7 @@ class OxfordImporter(manifestFile: File, dir: Option[File], shelfmarkAbbrev: Str
         PageInfo(
           oxfordId,
           shelfmarkLabel,
-          Some(PageNumberInfo(pageNumberLabel, pageNumbers))
+          pageNumberInfo
         ),
         n
       ) =>
@@ -140,12 +141,19 @@ class OxfordImporter(manifestFile: File, dir: Option[File], shelfmarkAbbrev: Str
     
         val sgaPageId = f"$libraryId%s-$shelfmarkId%s-$idSeq%04d"
 
-        val pages = pageNumbers.flatMap(volume.page.get)
         val size = dir.map { d =>
           val image = Sanselan.getBufferedImage(new File(d, oxfordId + ".tif"))
 
           (image.getWidth, image.getHeight)
         }
+
+        val pageNumbers = pageNumberInfo.toOption.fold(List.empty[PageNumber])(
+          _.pageNumbers
+        )
+
+        val pages = pageNumbers.flatMap(volume.page.get)
+
+        val pageNumberLabel = pageNumberInfo.fold(identity, _.label)
 
         val content = surfaceTemplate(
           libraryId,

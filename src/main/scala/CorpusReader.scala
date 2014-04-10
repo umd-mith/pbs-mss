@@ -20,9 +20,9 @@ object LineParser extends RegexParsers {
     * on the left side, while successful parses are returned with their full
     * structure on the right side.
     */
-  def apply(s: String): Either[Span, List[Span]] = parseAll(text, s.trim) match {
-    case Failure(_, _) => Left(Plain(s))
-    case Success(result, _) => Right(result.toList)
+  def apply(s: String): Span \/ List[Span] = parseAll(text, s.trim) match {
+    case Failure(_, _) => Plain(s).left
+    case Success(result, _) => result.toList.right
   }
 }
 
