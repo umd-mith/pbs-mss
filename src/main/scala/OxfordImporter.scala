@@ -159,8 +159,8 @@ class OxfordImporter(manifestFile: File, dir: Option[File], shelfmarkAbbrev: Str
           libraryId,
           shelfmarkId,
           idSeq,
-          shelfmarkLabel,
           pageNumberLabel,
+          shelfmarkLabel,
           size,
           pages
         )
