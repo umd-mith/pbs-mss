@@ -10,7 +10,7 @@ object LineParser extends RegexParsers {
   override val skipWhitespace = false
   val plain = "[^\\[\\]<>]+".r ^^ (Plain(_))
   lazy val deleted: Parser[Deleted] = ("[" ~> text <~ "]") ^^ (t => Deleted(t.toList))
-  lazy val unclear: Parser[Unclear] = ("<" ~> text <~ ">") ^^ (t => Unclear(t.toList))
+  lazy val unclear: Parser[Unclear] = ("""<\??""".r ~> text <~ ">") ^^ (t => Unclear(t.toList))
   lazy val text: Parser[Seq[Span]] = rep(plain | deleted | unclear)
   def apply(s: String): Either[Span, List[Span]] = parseAll(text, s.trim) match {
     case Failure(_, _) => Left(Plain(s))

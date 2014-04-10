@@ -4,6 +4,7 @@ import java.io.{ File, PrintWriter }
 import org.apache.sanselan._
 import scala.io.Source
 import scala.util.parsing.combinator._
+import scala.xml.PrettyPrinter
 import scalaz._, Scalaz._
 import scalaz.concurrent.{ Future, Task }
 import scalaz.stream._
@@ -37,6 +38,15 @@ object OxfordImporter {
 
   def fromDirectory(dir: File, shelfmarkAbbrev: String) =
     new OxfordImporter(new File(dir, "readme.txt"), Some(dir), shelfmarkAbbrev)
+
+  def main(args: Array[String]) {
+    val file = new File(args(0))
+    val abbrev = args(1)
+    val shelfmark = args(2)
+
+    val importer = if (file.isFile) fromManifest(file, abbrev) else fromDirectory(file, abbrev)
+    importer.createTei(new File("output"), shelfmark)
+  }
 }
 
 class OxfordImporter(manifestFile: File, dir: Option[File], shelfmarkAbbrev: String)
@@ -62,7 +72,8 @@ class OxfordImporter(manifestFile: File, dir: Option[File], shelfmarkAbbrev: Str
 
   manifestSource.close()
 
-  def createTei(outputDir: File, libraryCode: String, shelfmarkCode: String) {
+  def createTei(outputDir: File, shelfmarkCode: String) {
+    val libraryCode = "ox"
     val volume = CorpusReader.byShelfmark(shelfmarkAbbrev).run.getOrElse(
       throw new RuntimeException(f"Invalid shelfmark: $shelfmarkAbbrev%s.")
     )
@@ -72,17 +83,16 @@ class OxfordImporter(manifestFile: File, dir: Option[File], shelfmarkAbbrev: Str
     if (!outputDir.exists) outputDir.mkdir()
     if (!transcriptionDir.exists) transcriptionDir.mkdir()
 
-    println(volume.pages.map(_._1).mkString(" "))
-
-    manifest.zipWithIndex.collect {
+    val files = manifest.zipWithIndex.collect {
       case ((id, shelfmark, Some((pageNumberLabel, pageNumbers))), n) =>
         val idSeq = id.takeRight(4).toInt
 
         if (idSeq != n + 1) throw new RuntimeException(
            f"Sequence numbers don't match: $idSeq%d and $n%d in $id%s."
         )
+    
+        val sgaId = f"$libraryCode%s-$shelfmarkCode%s-$idSeq%04d"
 
-        println(pageNumbers.mkString(" "))
         val pages = pageNumbers.flatMap(volume.page.get)
         val size = dir.map { d =>
           val image = Sanselan.getBufferedImage(new File(d, id + ".tif"))
@@ -97,14 +107,40 @@ class OxfordImporter(manifestFile: File, dir: Option[File], shelfmarkAbbrev: Str
           shelfmark,
           pageNumberLabel,
           size,
-          Nil,
           pages
         )
         
-        val writer = new PrintWriter(new File(transcriptionDir, f"$sgaCode%s-$idSeq%04d.xml"))
+        val file = new File(transcriptionDir, f"$sgaCode%s-$idSeq%04d.xml")
+        val writer = new PrintWriter(file)
+
         writer.write(content)
         writer.close()
+
+        pageNumbers -> (sgaId, shelfmark, file)
     }
+
+    val fileMap = files.flatMap {
+      case (pageNumbers, fileInfo) => pageNumbers.map(_ -> fileInfo)
+    }.toMap
+
+    val works = volume.pages.map {
+      case (pageNumber, page) =>
+        page.lines.map(_._2.title).toSet.toVector.map((title: WorkTitle) =>
+          title.name -> fileMap.get(pageNumber).fold(List.empty[String]) {
+            case (sgaId, _, _) => List(sgaId)
+          }
+        ).toMap
+      }.suml.toList.sortBy(-_._2.size)
+
+    val tei = teiTemplate(libraryCode, shelfmarkCode, files.head._2._2, files.map(_._2._3), works)
+
+    val prettyPrinter = new PrettyPrinter(4096, 2)
+    val writer = new PrintWriter(new File(outputDir, f"$sgaCode%s.xml"))
+    writer.write("""<?xml version="1.0" encoding="UTF-8"?>""")
+    writer.write("""<?xml-model href="../../schemata/shelley_godwin_odd.rng"""")
+    writer.write("""  type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>""")
+    writer.write(prettyPrinter.format(tei))
+    writer.close()
   }
 }
 
