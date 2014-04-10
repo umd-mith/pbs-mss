@@ -12,7 +12,7 @@ trait TeiTemplates {
   }
 
   def lineTemplate(line: Line) = 
-    f"<line>${ line.spans.map(spanString).mkString }%s</line>\n"
+    f"    <line>${ line.spans.map(spanString).mkString }%s</line>\n"
 
   /** We're using a string-based template because the native XML support for
     * processing instructions and custom indentation and line break rules in
@@ -24,23 +24,25 @@ trait TeiTemplates {
     seq: Int,
     folioLabel: String,
     shelfmarkLabel: String,
-    w: Int,
-    h: Int,
+    size: Option[(Int, Int)],
     partsOf: List[String],
-    lines: Seq[Line]
+    pages: Seq[Page]
   ) = {
     val id = f"$library%s-$shelfmark%s-$seq%04d"
 
-    f"""
-<?xml version="1.0" encoding="ISO-8859-1"?><?xml-model href="../../../schemata/shelley-godwin-page.rnc"
+    val corners = size.fold("") {
+      case (w, h) => f"""\n  ulx="0" uly="0" lrx="$w%d" lry="$h%d""""
+    }
+
+    f"""<?xml version="1.0" encoding="ISO-8859-1"?><?xml-model href="../../../schemata/shelley-godwin-page.rnc"
   type="application/relax-ng-compact-syntax"?><?xml-stylesheet type="text/xsl"
   href="../../../xsl/page-proof.xsl"?>
-<surface xmlns="http://www.tei-c.org/ns/1.0" xmlns:sga="http://shelleygodwinarchive.org/ns/1.0" ulx="0" uly="0"
-  lrx="$w%d" lry="$h%d" xml:id="$id%s" partOf="${ partsOf.mkString(" ") }%s"
+<surface xmlns="http://www.tei-c.org/ns/1.0" xmlns:sga="http://shelleygodwinarchive.org/ns/1.0"$corners%s
+  xml:id="$id%s" partOf="${ partsOf.mkString(" ") }%s"
   sga:shelfmark="$shelfmarkLabel%s" sga:folio="$folioLabel%s"
   <graphic url="http://shelleygodwinarchive.org/images/$library%s/$id%s.jp2"/>
   <zone type="main">
-    ${ lines.map(lineTemplate).mkString("\n") }%s
+${ pages.flatMap(_.lines.map(_._2)).map(lineTemplate).mkString }%s
   </zone>
 <surface>
 """
