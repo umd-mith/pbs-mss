@@ -1,5 +1,4 @@
-import sbt._
-import Keys._
+import sbt._, Keys._
 
 object ShelleyMSS extends Build {
   lazy val base: Project = Project(
@@ -12,7 +11,6 @@ object ShelleyMSS extends Build {
     organization := "edu.umd.mith",
     version := "0.0.0-SNAPSHOT",
     resolvers ++= Seq(
-      Resolver.sonatypeRepo("snapshots"),
       "Scalaz Bintray Repo" at "http://dl.bintray.com/scalaz/releases"
     ),
     scalaVersion := "2.10.4",
@@ -24,7 +22,6 @@ object ShelleyMSS extends Build {
     ),
     libraryDependencies ++= Seq(
       "org.apache.sanselan" % "sanselan" % "0.97-incubator",
-      "org.parboiled" %% "parboiled" % "2.0-M2",
       "org.scalaz" %% "scalaz-core" % "7.0.6",
       "org.scalaz.stream" %% "scalaz-stream" % "snapshot-0.4"
     )

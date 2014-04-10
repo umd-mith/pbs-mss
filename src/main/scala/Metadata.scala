@@ -3,19 +3,28 @@ package edu.umd.mith.sga.mss
 import scala.io.Source
 import scalaz._, Scalaz._
 
+/** Basic error type that can refer to line numbers in the data file.
+  */
 case class CorpusFormatError(message: String, lineNumber: Int) extends Exception(
   f"At line $lineNumber%d: $message%s"
 )
 
+/** Accumulating error type.
+  */
 case class CorpusFormatErrors(errors: NonEmptyList[Throwable]) extends Exception(
   errors.toList.mkString("\n")
 )
 
+/** Represents an individual "volume" (usually a notebook).
+  */
 case class Volume(pages: Vector[(PageNumber, Page)]) {
   lazy val page = pages.toMap
 }
 
 object Volume {
+  /** "Adding" two volumes should merge the contents of pages. This monoid
+    * instance makes  processing a little more convenient.
+    */
   implicit val monoid: Monoid[Volume] = new Monoid[Volume] {
     val zero = Volume(Vector.empty)
     def append(f1: Volume, f2: => Volume) = f2.pages.foldLeft(f1) {
@@ -27,17 +36,24 @@ object Volume {
   }
 }
 
+/** Represents an individual page as an ordered mapping from line numbers to
+  * lines.
+  */
 case class Page(lines: Vector[(LineNumber, Line)]) {
   lazy val line = lines.toMap
 }
   
 object Page {
+  /** "Adding" two pages concatenates their lines.
+    */
   implicit val monoid: Monoid[Page] = new Monoid[Page] {
     val zero = Page(Vector.empty)
     def append(f1: Page, f2: => Page) = Page(f1.lines ++ f2.lines) 
   }
 }
 
+/** A page number captures information about the leaf and side.
+  */
 sealed trait PageNumber {
   def number: String
 }
@@ -55,6 +71,9 @@ object PageNumber {
 case class Recto(number: String) extends PageNumber
 case class Verso(number: String) extends PageNumber
 
+/** Represents a line number. The format is not always consistent, so there''s
+  * some guesswork here, and some leniency for apparently ill-formed lines.
+  */
 sealed trait LineNumber
 
 case class ErrorLineNumber(content: String) extends LineNumber
@@ -83,6 +102,8 @@ object LineNumber {
   }
 }
 
+/** The basic unit of content in the data file.
+  */
 case class Line(
   content: Either[Span, List[Span]],
   publication: (String, String),
@@ -93,6 +114,8 @@ case class Line(
   def spans = content.fold(List(_), identity)
 }
 
+/** Names can be abbreviated.
+  */
 trait Abbreviated {
   def name: String
   def abbrev: String
@@ -101,6 +124,8 @@ trait Abbreviated {
 case class Shelfmark(name: String, abbrev: String) extends Abbreviated
 case class WorkTitle(name: String, abbrev: String) extends Abbreviated
 
+/** Every line has a category associated with it.
+  */
 sealed trait Category
 case object Verse extends Category
 case object Prose extends Category
@@ -112,12 +137,17 @@ object Category {
   def apply(s: String): Option[Category] = categories.get(s)
 }
 
+/** Text content is represented using a simple tree structure.
+  */
 sealed trait Span
 case class Plain(text: String) extends Span
 trait Container extends Span { def spans: List[Span] }
 case class Unclear(spans: List[Span]) extends Container
 case class Deleted(spans: List[Span]) extends Container
 
+/** A utility object that reads title and shelfmark mappings from resources on
+  * the class path.
+  */
 object Metadata {
   private[this] val LinePattern = "^(\\S+) (.*)$".r
   private[this] val workTitlesPath = "/edu/umd/mith/sga/mss/works.txt"
