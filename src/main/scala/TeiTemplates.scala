@@ -92,7 +92,8 @@ trait TeiTemplates {
     }
 
     <TEI xmlns="http://www.tei-c.org/ns/1.0"
-         xmlns:xi="http://www.w3.org/2001/XInclude">
+         xmlns:xi="http://www.w3.org/2001/XInclude"
+         xml:id={id}>
     <teiHeader>
         <fileDesc>
             <titleStmt>
@@ -127,7 +128,7 @@ trait TeiTemplates {
                         <idno type="Bod">{ shelfmarkLabel }</idno>
                     </msIdentifier>
                     <msContents>
-                      <msItem xml:id={ id }>
+                      <msItem xml:id={ id + "-works" }>
                         <bibl status="">
                           <author>Percy Shelley</author>
                         </bibl>
