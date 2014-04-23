@@ -43,9 +43,9 @@ trait TeiTemplates {
     f"""<?xml version="1.0" encoding="ISO-8859-1"?><?xml-model href="../../../schemata/shelley-godwin-page.rnc"
   type="application/relax-ng-compact-syntax"?><?xml-stylesheet type="text/xsl"
   href="../../../xsl/page-proof.xsl"?>
-<surface xmlns="http://www.tei-c.org/ns/1.0" xmlns:sga="http://shelleygodwinarchive.org/ns/1.0"$corners%s
+<surface xmlns="http://www.tei-c.org/ns/1.0" xmlns:mith="http://mith.umd.edu/sc/ns1#"$corners%s
   xml:id="$id%s" partOf="#$library%s-$shelfmark%s"
-  sga:shelfmark="$shelfmarkLabel%s" sga:folio="$folioLabel%s">
+  mith:shelfmark="$shelfmarkLabel%s" mith:folio="$folioLabel%s">
   <graphic url="http://shelleygodwinarchive.org/images/$library%s/$id%s.jp2"/>
   <zone type="main">${ pages.flatMap(_.lines.map(_._2)).map(lineTemplate).mkString }%s
   </zone>
@@ -92,7 +92,8 @@ trait TeiTemplates {
     }
 
     <TEI xmlns="http://www.tei-c.org/ns/1.0"
-         xmlns:xi="http://www.w3.org/2001/XInclude">
+         xmlns:xi="http://www.w3.org/2001/XInclude"
+         xml:id={id}>
     <teiHeader>
         <fileDesc>
             <titleStmt>
@@ -127,7 +128,7 @@ trait TeiTemplates {
                         <idno type="Bod">{ shelfmarkLabel }</idno>
                     </msIdentifier>
                     <msContents>
-                      <msItem xml:id={ id }>
+                      <msItem xml:id={ id + "-works" }>
                         <bibl status="">
                           <author>Percy Shelley</author>
                         </bibl>
