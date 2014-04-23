@@ -63,7 +63,7 @@ the application. A much faster approach is to first use
 [ImageMagick](http://www.imagemagick.org/) to read the image sizes:
 
 ``` bash
-identify identify /mnt/data/sga/ox/ahu2012/*.tif > ahu2012/images.txt
+identify /mnt/data/sga/ox/ahu2012/*.tif > ahu2012/images.txt
 ```
 
 Now you can run the following:
