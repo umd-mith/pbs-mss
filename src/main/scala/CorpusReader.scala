@@ -9,7 +9,7 @@ import scalaz.stream._
   */
 object LineParser extends RegexParsers {
   override val skipWhitespace = false
-  val plain = "[^\\[\\]<>]+".r ^^ (Plain(_))
+  val plain = "[^\\[\\]<>]+".r ^^ (PlainText(_))
   lazy val deleted: Parser[Deleted] = ("[" ~> text <~ "]") ^^ (t => Deleted(t.toList))
   lazy val unclear: Parser[Unclear] = ("""<\??""".r ~> text <~ ">") ^^ (t => Unclear(t.toList))
   lazy val text: Parser[Seq[Span]] = rep(plain | deleted | unclear)
@@ -21,7 +21,7 @@ object LineParser extends RegexParsers {
     * structure on the right side.
     */
   def apply(s: String): Span \/ List[Span] = parseAll(text, s.trim) match {
-    case Failure(_, _) => Plain(s).left
+    case Failure(_, _) => PlainText(s).left
     case Success(result, _) => result.toList.right
   }
 }

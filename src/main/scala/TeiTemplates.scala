@@ -11,7 +11,7 @@ trait TeiTemplates {
     .replaceAll("<", "&lt;").replaceAll(">", "&gt;")
 
   def spanString(span: Span): String = span match {
-    case Plain(text) => cleanString(text)
+    case PlainText(text) => cleanString(text)
     case Unclear(spans) =>
       "<unclear>" + spans.flatMap(spanString).mkString + "</unclear>"
     case Deleted(spans) =>
@@ -150,4 +150,3 @@ trait TeiTemplates {
 </TEI>
   }  
 }
-

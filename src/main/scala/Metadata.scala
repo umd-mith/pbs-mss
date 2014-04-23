@@ -60,14 +60,17 @@ sealed trait PageNumber {
 
 object PageNumber {
   private[this] val PageNumberPattern = """(\d+[ab]?)([rv])""".r
+  private[this] val PlainPageNumberPattern = """(\d+)((?:\[[^\]]\])?)""".r
 
   def apply(s: String) = s match {
     case PageNumberPattern(number, "r") => some(Recto(number))
     case PageNumberPattern(number, "v") => some(Verso(number))
+    case PlainPageNumberPattern(number, extra) => some(Plain(number, extra))
     case _ => none
   }
 }
 
+case class Plain(number: String, extra: String) extends PageNumber
 case class Recto(number: String) extends PageNumber
 case class Verso(number: String) extends PageNumber
 
@@ -140,7 +143,7 @@ object Category {
 /** Text content is represented using a simple tree structure.
   */
 sealed trait Span
-case class Plain(text: String) extends Span
+case class PlainText(text: String) extends Span
 trait Container extends Span { def spans: List[Span] }
 case class Unclear(spans: List[Span]) extends Container
 case class Deleted(spans: List[Span]) extends Container

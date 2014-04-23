@@ -30,33 +30,54 @@ itself is written in Scala), along with some simple command line tools.
 
 These utilities can be built and run using [sbt](http://www.scala-sbt.org/).
 For example, to create TEI files for the MS. Shelley adds. c. 4 notebook,
-you could run the following command:
+you would first run the following command from the project directory to build
+the application:
 
 ``` bash
-./sbt "run-main edu.umd.mith.sga.mss.OxfordImporter \
-  /mnt/data/sga/ox/bhv2011/readme.txt BOD+c4 ms_shelley_adds_c4"
+./sbt assembly
 ```
 
-The first argument is the path to the manifest for the notebook, the second is
-the shelfmark abbreviation used in this corpus (see [the
-key](https://github.com/umd-mith/pbs-mss/blob/master/src/main/resources/edu/umd/mith/sga/mss/shelfmarks.txt)
-for the full list of abbreviations), and the third argument is the shelfmark
-identifier you wish to use in the output.
-
-Running the process using this command will not include `ulx`, `uly`, `lrx`, or `lry`
-attributes on the `surface` elements (these are used to indicate the size of the
-facsimile image). To generate these elements, point the application to the directory
-containing both the manifest and the TIF images:
+Now if the `ahu2012/` directory contains the Oxford manifest (`readme.txt`), you
+could run the following:
 
 ``` bash
-./sbt "run-main edu.umd.mith.sga.mss.OxfordImporter \
-  /mnt/data/sga/ox/bhv2011/ BOD+c4 ms_shelley_adds_c4"
+java -jar target/scala-2.10/pbs-mss-assembly-0.1.0-SNAPSHOT.jar \
+  --manifest ahu2012/readme.txt \
+  --abbrev   BOD+e16 \
+  --id       ms_shelley_adds_e16
 ```
 
-Note that this will run much slower, since it's reading the sizes of the images files,
-which can be very large.
+Note that this will generate warnings about not being able to determine image
+sizes. To find these sizes, you can take one of the following approaches. If
+you have the images locally, you can read the sizes (and manifest) directly:
 
-Either process will generate a top-level TEI file in the `output` directory.
+``` bash
+java -jar target/scala-2.10/pbs-mss-assembly-0.1.0-SNAPSHOT.jar \
+  --dir      /mnt/data/sga/ox/ahu2012 \
+  --abbrev   BOD+e16 \
+  --id       ms_shelley_adds_e16
+```
+
+This is extremely slow, though, since all of the images have to be processed by
+the application. A much faster approach is to first use
+[ImageMagick](http://www.imagemagick.org/) to read the image sizes:
+
+``` bash
+identify identify /mnt/data/sga/ox/ahu2012/*.tif > ahu2012/images.txt
+```
+
+Now you can run the following:
+
+``` bash
+java -jar target/scala-2.10/pbs-mss-assembly-0.1.0-SNAPSHOT.jar \
+  --manifest ahu2012/readme.txt \
+  --abbrev   BOD+e16 \
+  --id       ms_shelley_adds_e16 \
+  --sizes    ahu2012/images.txt
+```
+
+All of these processes will generate a top-level TEI file in the `output`
+directory.
 This file includes the transcription files, which will be generated in a
 directory under the output directory. For example, for the commands above,
 you'll see the following files:
