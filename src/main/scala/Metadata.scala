@@ -60,7 +60,7 @@ sealed trait PageNumber {
 
 object PageNumber {
   private[this] val PageNumberPattern = """(\d+[ab]?)([rv])""".r
-  private[this] val PlainPageNumberPattern = """(\d+)((?:\[[^\]]\])?)""".r
+  private[this] val PlainPageNumberPattern = """(\d+|\w{3})((?:\[[^\]]\])?)""".r
 
   def apply(s: String) = s match {
     case PageNumberPattern(number, "r") => some(Recto(number))
