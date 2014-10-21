@@ -66,7 +66,7 @@ object PageNumber {
     case PageNumberPattern(number, "r") => some(Recto(number))
     case PageNumberPattern(number, "v") => some(Verso(number))
     case PlainPageNumberPattern(number, extra) => some(Plain(number, extra))
-    case _ => none
+    case _ => some(Plain(s,""))
   }
 }
 
