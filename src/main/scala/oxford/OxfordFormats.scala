@@ -57,9 +57,10 @@ trait OxfordFormats {
     val manifest: List[PageInfo] =
       manifestSource.getLines.map(_.trim).filter(_.nonEmpty).flatMap {
         case LinePattern(id, shelfmark, FolioPattern(pageNumberLabel)) =>
-          val pageNumbers = PageNumberParser(pageNumberLabel).getOrElse(
-            throw new RuntimeException(f"Invalid page number: $pageNumberLabel%s.")
-          )
+          val pageNumbers = List(Plain(pageNumberLabel, ""))
+          // PageNumberParser(pageNumberLabel).getOrElse(
+          //   throw new RuntimeException(f"Invalid page number: $pageNumberLabel%s.")
+          // )
 
           PageInfo(id, shelfmark, PageNumberInfo(pageNumberLabel, pageNumbers).right).some
 
